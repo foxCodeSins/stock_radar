@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>短线雷达 · 复盘工作台</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">◤</span>
+    <div class="brand-text">
+      <strong>短线雷达</strong>
+      <span>复盘工作台 · 通达信数据</span>
+    </div>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="review">复盘中心</button>
+    <button class="tab" data-tab="picks">短线精选</button>
+    <button class="tab" data-tab="realtime">实时机会</button>
+    <button class="tab" data-tab="lbdip">连板低吸</button>
+    <button class="tab" data-tab="relay">明日接力</button>
+  </nav>
+  <div class="topbar-right">
+    <div class="status-pill" id="statusPill" title="数据模式">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">连接中…</span>
+    </div>
+    <button class="icon-btn" id="settingsBtn" title="设置 API Key">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="subbar">
+  <div class="board-filter" id="boardFilter"></div>
+  <div class="cap-filter" id="capFilter"></div>
+  <div class="subbar-right">
+    <label class="switch"><input type="checkbox" id="autoSwitch" checked><span class="slider"></span><span class="switch-label">自动刷新</span></label>
+    <span class="countdown" id="countdown"></span>
+  </div>
+</div>
+<div class="snapshot-banner" id="snapshotBanner" hidden>
+  <span id="bannerText">当前为快照数据。在设置中填写通达信 API Key 后即可启用实时自动刷新。</span>
+  <button class="ghost-btn" id="bannerSettingsBtn">去设置</button>
+</div>
+
+<main id="main">
+  <!-- 复盘中心 -->
+  <section class="view active" id="view-review">
+    <div class="view-head">
+      <h2>大盘复盘 <span class="trade-date" id="reviewDate"></span></h2>
+      <button class="ghost-btn" id="refreshReview">刷新数据</button>
+    </div>
+    <div class="index-row" id="indexRow"></div>
+    <div class="sentiment-band" id="sentimentBand"></div>
+    <div class="grid-2">
+      <div class="panel">
+        <div class="panel-head"><h3>题材热度</h3><span class="panel-note">按涨停原因聚合</span></div>
+        <div class="panel-body" id="themeList"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>连板天梯</h3><span class="panel-note">2 板及以上晋级梯队</span></div>
+        <div class="panel-body" id="ladderList"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>复盘计划</h3><span class="panel-note">由当日数据规则推导，仅供参考</span></div>
+      <div class="panel-body plan-grid" id="planGrid"></div>
+    </div>
+    <div class="grid-2 pool-grid">
+      <div class="panel">
+        <div class="panel-head"><h3>涨停池</h3><span class="panel-note" id="poolNote"></span></div>
+        <div class="panel-body table-wrap" id="poolTable"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>跌停与风险</h3><span class="panel-note">回避方向</span></div>
+        <div class="panel-body table-wrap" id="downTable"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 短线精选 -->
+  <section class="view" id="view-picks">
+    <div class="view-head">
+      <h2>短线精选</h2>
+      <button class="ghost-btn" id="refreshPicks">刷新数据</button>
+    </div>
+    <div class="strategy-tabs" id="strategyTabs"></div>
+    <div class="panel">
+      <div class="panel-head"><h3 id="picksTitle">--</h3><span class="panel-note" id="picksDesc"></span></div>
+      <div class="panel-body table-wrap" id="picksTable"></div>
+    </div>
+  </section>
+
+  <!-- 实时机会 -->
+  <section class="view" id="view-realtime">
+    <div class="view-head">
+      <h2>实时机会 <span class="trade-date" id="realtimeClock"></span></h2>
+      <button class="ghost-btn" id="refreshRealtime">立即刷新</button>
+    </div>
+    <div class="rt-grid" id="rtGrid"></div>
+  </section>
+
+  <!-- 连板低吸 -->
+  <section class="view" id="view-lbdip">
+    <div class="view-head">
+      <h2>连板低吸机会 <span class="trade-date" id="lbNote"></span></h2>
+      <button class="ghost-btn" id="refreshLb">立即刷新</button>
+    </div>
+    <div class="panel">
+      <div class="panel-head"><h3>昨日连板 · 今日回调</h3><span class="panel-note">上一交易日 2 连板及以上、今日涨幅 ≤2% 且未接近跌停 · 含龙头定位 / 题材预期 / 技术面 / 评级，仅供参考，高风险注意仓位</span></div>
+      <div class="panel-body table-wrap" id="lbTable"></div>
+    </div>
+  </section>
+
+  <!-- 明日接力 -->
+  <section class="view" id="view-relay">
+    <div class="view-head">
+      <h2>明日接力推荐 <span class="trade-date" id="relayNote"></span></h2>
+      <button class="ghost-btn" id="refreshRelay">立即刷新</button>
+    </div>
+    <div class="relay-grid">
+      <div class="panel">
+        <div class="panel-head"><h3>连板接力</h3><span class="panel-note">今日 2 连板及以上 · 按连板高度 / 封板质量 / 题材热度评分 · 供明日竞价接力参考</span></div>
+        <div class="panel-body table-wrap" id="relayLbTable"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>反包板接力</h3><span class="panel-note">昨日炸板 / 跌停、今日涨停反包 · 情绪反转候选 · 高风险注意仓位</span></div>
+        <div class="panel-body table-wrap" id="relayFbTable"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  数据来源：通达信数据服务 · 本工具仅为数据整理与规则化复盘，不构成任何投资建议。股市有风险，入市需谨慎。
+</footer>
+
+<!-- 个股详情抽屉 -->
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div class="drawer-title">
+      <strong id="dName">--</strong>
+      <span class="drawer-code" id="dCode">--</span>
+      <span class="drawer-price" id="dPrice">--</span>
+      <span class="drawer-chg" id="dChg">--</span>
+    </div>
+    <button class="icon-btn" id="drawerClose">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="chart-box" id="klineChart"></div>
+    <div class="drawer-meta" id="dMeta"></div>
+    <div class="drawer-extra" id="dExtra"></div>
+  </div>
+</aside>
+<div class="drawer-mask" id="drawerMask"></div>
+
+<!-- 设置弹窗 -->
+<div class="modal-mask" id="settingsMask">
+  <div class="modal">
+    <div class="modal-head"><h3>数据服务设置</h3><button class="icon-btn" id="settingsClose">✕</button></div>
+    <div class="modal-body">
+      <p class="modal-note">默认使用<b>免费实时行情</b>（无需 Key）。填写通达信 API Key 可切换为官方数据服务，解锁 NLP 条件选股、F10 等完整能力（官方服务按积分计费，Key 在 vip.tdx.com.cn 会员中心创建）。</p>
+      <label class="field-label" for="apiKeyInput">通达信 API Key</label>
+      <div class="key-row">
+        <input type="password" id="apiKeyInput" placeholder="粘贴你的通达信 API Key" autocomplete="off">
+        <button class="ghost-btn" id="toggleKeyVisible" type="button">显示</button>
+      </div>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="testKeyBtn">测试连接</button>
+        <button class="primary-btn" id="saveKeyBtn">保存</button>
+      </div>
+      <p class="modal-result" id="keyTestResult"></p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

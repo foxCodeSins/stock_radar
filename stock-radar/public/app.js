@@ -57,6 +57,7 @@ function rerenderCurrent() {
   if (state.tab === 'realtime' && state.realtime) renderRealtime(true);
   if (state.tab === 'lbdip' && state.lbDip) renderLbDip();
   if (state.tab === 'relay' && state.relay) renderRelay();
+  if (state.tab === 'aipicks' && state.aipicks) renderAiPicks();
 }
 
 /* ---------- 工具函数 ---------- */
@@ -433,11 +434,62 @@ function renderLbDip() {
   </tr>`).join('')}</tbody></table>`;
 }
 
+/* ---------- AI 短线推荐 ---------- */
+async function loadAiPicks(silent = false) {
+  if (!silent) $('#aiGrid').innerHTML = '<div class="loading-tip">AI 正在聚合多源信号并分析</div>';
+  const r = await api('/api/ai-picks');
+  applyMode(r.mode, r.generatedAt, r.error);
+  if (!r.data) {
+    $('#aiGrid').innerHTML = `<div class="error-tip">${esc(r.error || '暂无数据')}</div>`;
+    $('#aiSummary').textContent = '';
+    return;
+  }
+  state.aipicks = r.data;
+  renderAiPicks();
+}
+
+function renderAiPicks() {
+  const d = state.aipicks;
+  $('#aiSummary').textContent = d.summary || '';
+  $('#aiEngine').textContent = d.engine === 'llm'
+    ? '大模型深度分析 · 可在设置中更换模型'
+    : '本地规则引擎 · 在设置中配置大模型可获得深度分析';
+  $('#aiNote').textContent = `候选池 ${d.total ?? '--'} 只 · 展示评分前 ${(d.stocks || []).length} 名`;
+  const stocks = (d.stocks || []).filter(s => boardMatch(s.code) && capMatch(s));
+  if (!stocks.length) {
+    $('#aiGrid').innerHTML = '<div class="empty-tip">暂无符合条件的推荐（或已被板块/市值筛选过滤）</div>';
+    return;
+  }
+  $('#aiGrid').innerHTML = stocks.map((st, i) => {
+    const scoreCls = st.score >= 75 ? 'high' : st.score >= 60 ? 'mid' : 'low';
+    return `<div class="ai-card" data-code="${esc(st.code)}" data-market="${esc(st.market)}" data-name="${esc(st.name)}">
+      <div class="ai-card-head">
+        <div class="ai-card-title">
+          <span class="ai-rank">${i + 1}</span>
+          <div><strong>${esc(st.name)}</strong><span class="ai-code">${esc(st.code)}</span></div>
+        </div>
+        <div class="ai-score ${scoreCls}"><b>${st.score}</b><span>分</span></div>
+      </div>
+      <div class="ai-card-quote">
+        <span class="ai-price">${fmtNum(st.price)}</span>
+        <span class="${chgClass(st.chg)}">${fmtChg(st.chg)}</span>
+        ${st.days >= 2 ? `<span class="badge badge-days hot">${st.days}板</span>` : ''}
+        <span class="rating-stars">${esc(st.rating)}</span>
+      </div>
+      <div class="ai-tags">${(st.tags || []).map(t => `<span class="ai-tag">${esc(t)}</span>`).join('')}${st.reason ? `<span class="ai-tag theme">${esc(st.reason)}</span>` : ''}</div>
+      <div class="ai-section"><div class="ai-sec-title hl">亮点</div><p>${esc((st.highlight || []).join('；'))}</p></div>
+      <div class="ai-section"><div class="ai-sec-title rk">风险</div><p>${esc((st.risk || []).join('；'))}</p></div>
+      <div class="ai-action">${esc(st.action || '')}</div>
+    </div>`;
+  }).join('');
+}
+
 function refreshActive(silent = false) {
   if (state.tab === 'review') return loadReview(silent);
   if (state.tab === 'picks') return loadPicks(silent);
   if (state.tab === 'lbdip') return loadLbDip(silent);
   if (state.tab === 'relay') return loadRelay(silent);
+  if (state.tab === 'aipicks') return loadAiPicks(silent);
   return loadRealtime(silent);
 }
 
@@ -593,6 +645,13 @@ function openSettings() {
   $('#apiKeyInput').value = '';
   $('#keyTestResult').textContent = '';
   $('#keyTestResult').className = 'modal-result';
+  $('#llmKeyInput').value = '';
+  // 回填已保存的大模型配置（不回填 Key 本体）
+  api('/api/config').then(c => {
+    $('#llmBaseUrl').value = (c.llm && c.llm.baseUrl) || '';
+    $('#llmModel').value = (c.llm && c.llm.model) || '';
+    $('#llmStatus').textContent = c.llm && c.llm.hasKey ? '已配置大模型 Key（留空保持不变，输入 CLEAR 清除）' : '未配置大模型，AI 推荐使用本地规则引擎';
+  }).catch(() => { $('#llmStatus').textContent = ''; });
 }
 function closeSettings() { $('#settingsMask').classList.remove('open'); }
 
@@ -665,7 +724,7 @@ function bindEvents() {
 
   // 表格/筹码点击 → 个股抽屉（事件委托）
   document.addEventListener('click', e => {
-    const row = e.target.closest('tr[data-code], .stock-chip[data-code]');
+    const row = e.target.closest('tr[data-code], .stock-chip[data-code], .ai-card[data-code]');
     if (row) openDrawer(row.dataset.code, row.dataset.market, row.dataset.name);
   });
 

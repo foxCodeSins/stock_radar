@@ -22,6 +22,7 @@
     <button class="tab" data-tab="realtime">实时机会</button>
     <button class="tab" data-tab="lbdip">连板低吸</button>
     <button class="tab" data-tab="relay">明日接力</button>
+    <button class="tab" data-tab="aipicks">AI 推荐</button>
   </nav>
   <div class="topbar-right">
     <div class="status-pill" id="statusPill" title="数据模式">
@@ -132,6 +133,18 @@
         <div class="panel-body table-wrap" id="relayFbTable"></div>
       </div>
     </div>
+  <!-- AI 推荐 -->
+  <section class="view" id="view-aipicks">
+    <div class="view-head">
+      <h2>AI 短线推荐 <span class="trade-date" id="aiNote"></span></h2>
+      <button class="ghost-btn" id="refreshAi">立即刷新</button>
+    </div>
+    <div class="panel ai-summary-panel">
+      <div class="panel-head"><h3>市场环境与策略</h3><span class="panel-note" id="aiEngine"></span></div>
+      <div class="panel-body ai-summary" id="aiSummary"></div>
+    </div>
+    <div class="ai-grid" id="aiGrid"></div>
+    <p class="ai-disclaimer">AI 分析基于公开行情数据与规则/大模型推理，存在误判风险，不构成投资建议，请独立决策并严格控制仓位。</p>
   </section>
 </main>
 
@@ -174,6 +187,18 @@
         <button class="primary-btn" id="saveKeyBtn">保存</button>
       </div>
       <p class="modal-result" id="keyTestResult"></p>
+      <hr class="modal-divider">
+      <p class="modal-note"><b>AI 深度分析（可选）</b>：配置 OpenAI 兼容的大模型接口后，「AI 推荐」模块将调用大模型生成个股深度分析；不配置则使用本地规则引擎。Key 仅保存在本机 data/config.json。</p>
+      <label class="field-label" for="llmBaseUrl">接口地址 Base URL</label>
+      <input type="text" id="llmBaseUrl" class="text-input" placeholder="如 https://api.openai.com/v1 或兼容服务地址" autocomplete="off">
+      <label class="field-label" for="llmModel">模型 Model</label>
+      <input type="text" id="llmModel" class="text-input" placeholder="如 gpt-4o-mini / deepseek-chat / qwen-plus" autocomplete="off">
+      <label class="field-label" for="llmKeyInput">大模型 API Key</label>
+      <div class="key-row">
+        <input type="password" id="llmKeyInput" placeholder="留空表示保持已保存的 Key" autocomplete="off">
+        <button class="ghost-btn" id="toggleLlmKeyVisible" type="button">显示</button>
+      </div>
+      <p class="modal-note" id="llmStatus"></p>
     </div>
   </div>
 </div>
